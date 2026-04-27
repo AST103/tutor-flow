@@ -1,0 +1,18 @@
+# Example values for local testing (copy to terraform.tfvars)
+# NOTE: Keep your real terraform.tfvars out of git.
+
+aws_region  = "us-east-1"
+tutor_email = "your_verified_ses_sender@example.com"
+
+students = [
+  {
+    name          = "Student One"
+    email         = "student.one@example.com"
+    subject       = "Math"
+    session_day   = "Monday"
+    session_time  = "10:00"
+    reminder_day  = "Sunday"
+    reminder_time = "10:00"
+    zoom_link     = null
+  }
+]

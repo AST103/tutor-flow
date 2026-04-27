@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TutorFlow — Ops Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">Tutor<em>Flow</em><span>ops dashboard</span></div>
+      <nav class="nav">
+        <span class="nav-item on">Students</span>
+        <a class="nav-item" href="https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards/dashboard/TutorFlow-Pipeline" target="_blank">Pipeline</a>
+        <a class="nav-item" href="https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups" target="_blank">Logs</a>
+      </nav>
+    </div>
+    <div class="header-right">
+      <div class="pencil-indicator">
+        <svg class="pencil-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M11.5 1.5L14.5 4.5L5 14H2V11L11.5 1.5Z" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M9.5 3.5L12.5 6.5" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span class="ts" id="ts">--:--:--</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO STATS -->
+  <div class="hero">
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-n hi" id="k-students">—</div>
+        <div class="stat-l">Students enrolled</div>
+        <div class="stat-sub">roster active</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" id="k-practice">—</div>
+        <div class="stat-l">Practice sets sent</div>
+        <div class="stat-sub">via Bedrock + SES</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" id="k-sessions">—</div>
+        <div class="stat-l">Sessions logged</div>
+        <div class="stat-sub">this cycle</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n">2</div>
+        <div class="stat-l">Automations live</div>
+        <div class="stat-sub">EventBridge firing</div>
+      </div>
+    </div>
+  </div>
+  <div class="divider"></div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- LEFT: Student Cards -->
+    <div class="students-col">
+      <div class="col-head">
+        <span class="col-title">Active students</span>
+        <button class="refresh-btn" onclick="loadStudents()">Refresh</button>
+      </div>
+      <div id="cards">
+        <div class="loading-state">Loading students...</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Form + Pipeline -->
+    <div class="sidebar">
+      <div class="col-head">
+        <span class="col-title">Log session</span>
+      </div>
+
+      <div class="form-card">
+        <div class="form-top">
+          <div class="form-title">Post-session notes</div>
+          <div class="form-subtitle">Bedrock reads this Sunday night</div>
+        </div>
+        <div class="form-body">
+          <div class="ff">
+            <label for="sel">Student</label>
+            <select id="sel">
+              <option value="">Select student</option>
+            </select>
+          </div>
+          <div class="ff">
+            <label for="top">Topics covered</label>
+            <input id="top" type="text" placeholder="e.g. derivatives, chain rule">
+          </div>
+          <div class="ff">
+            <label for="str">Struggled with</label>
+            <input id="str" type="text" placeholder="e.g. implicit differentiation">
+          </div>
+          <div class="ff">
+            <label for="not">Additional notes</label>
+            <textarea id="not" placeholder="Any context for AI generation..."></textarea>
+          </div>
+          <button class="btn" onclick="logSession()">Save session notes</button>
+          <div class="res" id="res"></div>
+        </div>
+      </div>
+
+      <div class="pipeline-card">
+        <div class="pipeline-title">Pipeline status</div>
+        <div class="pipeline-item">
+          <span class="pipeline-name">Practice processor</span>
+          <span class="pipeline-status green">● active</span>
+        </div>
+        <div class="pipeline-item">
+          <span class="pipeline-name">Reminder processor</span>
+          <span class="pipeline-status green">● active</span>
+        </div>
+        <div class="pipeline-item">
+          <span class="pipeline-name">Roster seeder</span>
+          <span class="pipeline-status green">● synced</span>
+        </div>
+        <div class="pipeline-item">
+          <span class="pipeline-name">Next practice run</span>
+          <span class="pipeline-status amber">SUN 20:00 UTC</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
