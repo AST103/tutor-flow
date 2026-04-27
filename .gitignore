@@ -14,7 +14,6 @@ terraform/terraform.rc
 # Generated Lambda zips (built by archive_file)
 terraform/*.zip
 
-# tfvars often contain secrets / personal data
 terraform/*.tfvars
 
 # Python
