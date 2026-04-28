@@ -12,6 +12,8 @@ import os
 import json
 import html
 import re
+import time
+import random
 import boto3
 from boto3.dynamodb.conditions import Key
 from datetime import datetime
@@ -69,6 +71,14 @@ def get_latest_session_notes(table):
 def generate_practice_set(student_name, student_subject, session_notes):
     # call Bedrock to generate practice questions based on session notes
 
+    transient_error_codes = {
+        "ThrottlingException",
+        "TooManyRequestsException",
+        "ModelTimeoutException",
+        "TimeoutException",
+        "ServiceUnavailableException",
+    }
+
     try:
         if session_notes:
             prompt = f"""You are an expert tutor. Generate exactly 5 practice problems for a student.
@@ -105,16 +115,59 @@ Output rules (important):
 - Do not include answers or solution steps.
 """
 
-        response = bedrock.invoke_model(
-            modelId="global.anthropic.claude-haiku-4-5-20251001-v1:0",
-            body=json.dumps(
-                {
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 1000,
-                    "messages": [{"role": "user", "content": prompt}],
-                }
-            ),
-        )
+        max_attempts = 5
+        base_delay_seconds = 0.5
+
+        last_err: Exception | None = None
+        response = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                response = bedrock.invoke_model(
+                    modelId="global.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    body=json.dumps(
+                        {
+                            "anthropic_version": "bedrock-2023-05-31",
+                            "max_tokens": 1000,
+                            "messages": [{"role": "user", "content": prompt}],
+                        }
+                    ),
+                )
+                break
+            except ClientError as e:
+                last_err = e
+                error_code = (
+                    e.response.get("Error", {}).get("Code")
+                    if hasattr(e, "response") and isinstance(e.response, dict)
+                    else None
+                )
+
+                if attempt == max_attempts or error_code not in transient_error_codes:
+                    raise
+
+                delay = base_delay_seconds * (2 ** (attempt - 1))
+                jitter = random.random() * 0.2
+                print(
+                    f"Bedrock retryable error ({error_code}) for {student_name}; "
+                    f"attempt {attempt}/{max_attempts}, sleeping {delay + jitter:.2f}s"
+                )
+                time.sleep(delay + jitter)
+            except BotoCoreError as e:
+                last_err = e
+                if attempt == max_attempts:
+                    raise
+
+                delay = base_delay_seconds * (2 ** (attempt - 1))
+                jitter = random.random() * 0.2
+                print(
+                    f"Bedrock BotoCoreError for {student_name}; "
+                    f"attempt {attempt}/{max_attempts}, sleeping {delay + jitter:.2f}s"
+                )
+                time.sleep(delay + jitter)
+
+        if response is None:
+            if last_err is not None:
+                raise last_err
+            raise RuntimeError("Bedrock invoke_model failed without an exception")
 
         result = json.loads(response["body"].read())
         return result["content"][0]["text"]
@@ -125,18 +178,6 @@ Output rules (important):
             if hasattr(e, "response") and isinstance(e.response, dict)
             else None
         )
-
-        # Common transient / retryable failures
-        if error_code in {
-            "ThrottlingException",
-            "TooManyRequestsException",
-            "ModelTimeoutException",
-            "TimeoutException",
-            "ServiceUnavailableException",
-        }:
-            print(f"Bedrock transient error ({error_code}): {str(e)}")
-            raise
-
         print(f"Bedrock ClientError ({error_code}): {str(e)}")
         raise
 
@@ -190,13 +231,17 @@ def send_practice_email(student_name, student_email, student_subject, practice_s
         )
 
     except ses.exceptions.MessageRejected as e:
-        print(f"Email rejected: {str(e)}")
+        print(
+            f"SES MessageRejected for {student_name} <{student_email}>: {str(e)}"
+        )
         raise
     except ses.exceptions.MailFromDomainNotVerifiedException as e:
-        print(f"Email domain not verified: {str(e)}")
+        print(
+            f"SES MailFromDomainNotVerifiedException for {student_name} <{student_email}>: {str(e)}"
+        )
         raise
     except Exception as e:
-        print(f"Error sending email: {str(e)}")
+        print(f"Error sending practice email to {student_name} <{student_email}>: {str(e)}")
         raise
 
 
@@ -242,7 +287,4 @@ def lambda_handler(event, context):
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")
-        return {
-            "statusCode": 500,
-            "body": json.dumps(f"Error generating practice set for {student_name}"),
-        }
+        raise

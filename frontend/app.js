@@ -37,6 +37,7 @@ async function loadStudents() {
   try {
     const response = await fetch(API + '/students');
     const students = await response.json();
+    students.sort((a, b) => (a.student_name || '').localeCompare((b.student_name || ''), undefined, { sensitivity: 'base' }));
 
     let html = '';
     let practiceCount = 0;
@@ -50,7 +51,8 @@ async function loadStudents() {
       if (student.last_session_date) sessionCount++;
 
       const avatarClass = AVATAR_CLASSES[i % AVATAR_CLASSES.length];
-      const statusTag = student.last_practice_date
+      const isActive = !!(student.last_practice_date || student.last_session_date);
+      const statusTag = isActive
         ? '<span class="tag active">Active</span>'
         : '<span class="tag pending">Pending</span>';
       const typeTag = student.zoom_link

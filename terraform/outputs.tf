@@ -32,6 +32,6 @@ output "deployment_summary" {
 }
 
 output "api_url" {
-    description = "API Gateway URL for frontend to call"
-    value       = aws_api_gateway_stage.prod.invoke_url
+  description = "API Gateway URL for frontend to call"
+  value       = aws_api_gateway_stage.prod.invoke_url
 }
