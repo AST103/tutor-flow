@@ -16,6 +16,24 @@ def lambda_handler(event, context):
         students = json.loads(os.environ["STUDENTS_JSON"])
         table = dynamodb.Table(ROSTER_TABLE_NAME)
 
+        desired_names = {student["name"] for student in students}
+
+        # Delete students that are no longer in the desired list
+        deleted = 0
+        scan_kwargs = {}
+        while True:
+            response = table.scan(**scan_kwargs)
+            for item in response.get("Items", []):
+                existing_name = item.get("student_name")
+                if existing_name and existing_name not in desired_names:
+                    table.delete_item(Key={"student_name": existing_name})
+                    deleted += 1
+
+            last_key = response.get("LastEvaluatedKey")
+            if not last_key:
+                break
+            scan_kwargs["ExclusiveStartKey"] = last_key
+
         for student in students:
             table.put_item(
                 Item={
@@ -30,6 +48,9 @@ def lambda_handler(event, context):
                     "table_name": f"tutorflow-{student['name'].lower().replace(' ', '-')}",
                 }
             )
+
+        if deleted:
+            print(f"Deleted {deleted} students removed from config.")
         return {
             "statusCode": 200,
             "body": json.dumps({"message": "Roster table populated successfully."}),

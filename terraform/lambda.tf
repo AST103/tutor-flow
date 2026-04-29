@@ -30,7 +30,7 @@ resource "aws_lambda_function" "practice_set" {
   function_name    = "tutorflow-processor-practice"
   filename         = data.archive_file.practice_set_zip.output_path
   source_code_hash = data.archive_file.practice_set_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
+  role             = aws_iam_role.practice_set_lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 60 # longer time to call Bedrock
@@ -49,7 +49,7 @@ resource "aws_lambda_function" "reminder" {
   function_name    = "tutorflow-processor-reminder"
   filename         = data.archive_file.reminder_zip.output_path
   source_code_hash = data.archive_file.reminder_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
+  role             = aws_iam_role.reminder_lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 30 # just sending an email shorter time
@@ -68,7 +68,7 @@ resource "aws_lambda_function" "roster_seeder" {
   function_name    = "tutorflow-processor-roster"
   filename         = data.archive_file.roster_zip.output_path
   source_code_hash = data.archive_file.roster_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
+  role             = aws_iam_role.roster_seeder_lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 30
@@ -88,7 +88,7 @@ resource "aws_lambda_function" "api_handler" {
   function_name    = "tutorflow-api-handler"
   filename         = data.archive_file.api_zip.output_path
   source_code_hash = data.archive_file.api_zip.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
+  role             = aws_iam_role.api_handler_lambda_role.arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 30
@@ -112,6 +112,7 @@ resource "aws_lambda_invocation" "seed_roster" {
 
   triggers = {
     students_hash = md5(jsonencode(var.students)) # re-run seeder if students list changes
+    seeder_hash   = data.archive_file.roster_zip.output_base64sha256
   }
 
   depends_on = [
